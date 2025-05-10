@@ -91,26 +91,26 @@ builder.Services.AddHostedService<RefreshJob>();
 var app = builder.Build();
 
 // 🚀 Carica cocktails/ingredienti mappa iniziale
-using (var scope = app.Services.CreateScope())
-{
-    var repo   = scope.ServiceProvider.GetRequiredService<CocktailRepository>();
-    var client = scope.ServiceProvider.GetRequiredService<CocktailServiceClient>();
-    var log    = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+// using (var scope = app.Services.CreateScope())
+// {
+//     var repo   = scope.ServiceProvider.GetRequiredService<CocktailRepository>();
+//     var client = scope.ServiceProvider.GetRequiredService<CocktailServiceClient>();
+//     var log    = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    for (int attempt = 1; attempt <= 5; attempt++)
-    {
-        await Task.Delay(TimeSpan.FromSeconds(60));
-        await repo.ReloadAsync(client, force: true);
+//     for (int attempt = 1; attempt <= 5; attempt++)
+//     {
+//         await Task.Delay(TimeSpan.FromSeconds(60));
+//         await repo.ReloadAsync(client, force: true);
 
-        log.LogInformation("Tentativo {Attempt}/5 – cache contiene {Count} cocktail.",
-                           attempt, repo.GetCocktails().Count);
+//         log.LogInformation("Tentativo {Attempt}/5 – cache contiene {Count} cocktail.",
+//                            attempt, repo.GetCocktails().Count);
 
-        if (attempt < 5)
-            await Task.Delay(TimeSpan.FromSeconds(5));
-    }
+//         if (attempt < 5)
+//             await Task.Delay(TimeSpan.FromSeconds(5));
+//     }
 
-    log.LogInformation("✅ Bootstrap completato (non garantisce dataset pieno).");
-}
+//     log.LogInformation("✅ Bootstrap completato (non garantisce dataset pieno).");
+// }
 
 
 // ✅ HTTP Pipeline

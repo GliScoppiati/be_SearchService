@@ -20,77 +20,123 @@ public class SearchController : ControllerBase
 
     private static string Normalize(string? input)
     {
-        return string.IsNullOrWhiteSpace(input) ? "" : input.Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(input)
+            ? string.Empty
+            : input.Trim().ToLowerInvariant();
     }
 
     [HttpGet("filters")]
     public IActionResult GetFilters([FromQuery] string filterType)
     {
-        if (filterType == "ingredients")
-            return Ok(_cocktailRepo.GetIngredients().Select(i => new { name = i.Name }));
+        switch (filterType)
+        {
+            case "ingredients":
+            {
+                var ingredients = _cocktailRepo.GetIngredients()
+                    .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+                    .Select(i => new { name = i.Name })
+                    .Distinct();
+                return Ok(ingredients);
+            }
 
-        if (filterType == "category")
-            return Ok(_cocktailRepo.GetCocktails().Select(c => new { name = c.Category }).Distinct());
+            case "category":
+            {
+                var categories = _cocktailRepo.GetCocktails()
+                    .Select(c => c.Category)
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Distinct()
+                    .Select(name => new { name });
+                return Ok(categories);
+            }
 
-        if (filterType == "glass")
-            return Ok(_cocktailRepo.GetCocktails().Select(c => new { name = c.Glass }).Distinct());
+            case "glass":
+            {
+                var glasses = _cocktailRepo.GetCocktails()
+                    .Select(c => c.Glass)
+                    .Where(g => !string.IsNullOrWhiteSpace(g))
+                    .Distinct()
+                    .Select(name => new { name });
+                return Ok(glasses);
+            }
 
-        if (filterType == "alcoholic")
-            return Ok(new[] { new { name = "true" }, new { name = "false" } });
+            case "alcoholic":
+            {
+                var options = new[]
+                {
+                    new { name = "true" },
+                    new { name = "false" }
+                };
+                return Ok(options);
+            }
 
-        return BadRequest("Invalid filter type");
+            default:
+                return BadRequest("Invalid filter type");
+        }
     }
 
     [HttpPost]
     public IActionResult Search([FromBody] SearchRequestDto request)
     {
-        var alcoholAllowed = User.Claims.FirstOrDefault(c => c.Type == "alcoholAllowed")?.Value == "True";
+        // Verifica claim alcoholAllowed
+        var alcoholAllowed = User.Claims
+            .FirstOrDefault(c => c.Type == "alcoholAllowed")
+            ?.Value
+            .Equals("true", StringComparison.OrdinalIgnoreCase) == true;
 
-        // Nessun filtro → 400
+        // Validazione input
         if (request.Filters is null || request.Filters.Count == 0)
             return BadRequest("At least one filter is required.");
 
-        var cocktails = _cocktailRepo.GetCocktails().Where(c =>
-        {
-            // 1️⃣  Escludi cocktail alcolici se l’utente non li può vedere
-            if (!alcoholAllowed && c.IsAlcoholic)
-                return false;
+        // Preleva cache per evitare multiple enumerazioni
+        var allCocktails   = _cocktailRepo.GetCocktails();
+        var allIngredients = _cocktailRepo.GetIngredients();
+        var allMaps        = _cocktailRepo.GetIngredientMap();
 
-            // 2️⃣  Ogni filtro deve combaciare (AND)
-            foreach (var f in request.Filters)
+        var results = allCocktails
+            .Where(c =>
             {
-                var normalized = Normalize(f.FilterName);
+                // Escludi alcolici se non consentiti
+                if (!alcoholAllowed && c.IsAlcoholic)
+                    return false;
 
-                var match = f.FilterType switch
+                // Applica tutti i filtri (AND)
+                foreach (var filter in request.Filters)
                 {
-                    "ingredients" => _cocktailRepo.GetIngredientMap()
-                        .Where(m => m.CocktailId == c.CocktailId)
-                        .Join(_cocktailRepo.GetIngredients(),
-                            map => map.IngredientId,
-                            ingredient => ingredient.IngredientId,
-                            (map, ingredient) => Normalize(ingredient.NormalizedName))
-                        .Any(n => n.Contains(normalized)),
+                    var normalizedName = Normalize(filter.FilterName);
 
-                    "category"  => Normalize(c.Category).Equals(normalized),
-                    "glass"     => Normalize(c.Glass).Equals(normalized),
-                    "alcoholic" => c.IsAlcoholic.ToString().ToLower().Equals(normalized),
-                    "cocktail"  => Normalize(c.Name).Contains(normalized),
-                    _           => false
-                };
+                    bool isMatch = filter.FilterType switch
+                    {
+                        "ingredients" => allMaps
+                            .Where(m => m.CocktailId == c.CocktailId)
+                            .Join(allIngredients,
+                                  map => map.IngredientId,
+                                  ing => ing.IngredientId,
+                                  (map, ing) => Normalize(ing.Name))
+                            .Any(n => n.Contains(normalizedName, StringComparison.OrdinalIgnoreCase)),
 
-                if (!match) return false;   // un filtro fallisce → cocktail escluso
-            }
+                        "category"   => Normalize(c.Category).Equals(normalizedName),
+                        "glass"      => Normalize(c.Glass).Equals(normalizedName),
+                        "alcoholic"  => c.IsAlcoholic
+                                          ? normalizedName == "true"
+                                          : normalizedName == "false",
+                        "cocktail"   => Normalize(c.Name).Contains(normalizedName),
+                        _             => false
+                    };
 
-            return true; // tutti i filtri passano
-        })
-        .Select(c => new CocktailDto
-        {
-            CocktailId = c.CocktailId,
-            Name       = c.Name,
-            ImageUrl   = c.ImageUrl
-        })
-        .ToList();
+                    if (!isMatch)
+                        return false;
+                }
 
-        return Ok(cocktails);
+                return true;
+            })
+            .Select(c => new CocktailDto
+            {
+                CocktailId = c.CocktailId,
+                Name       = c.Name,
+                ImageUrl   = c.ImageUrl
+            })
+            .ToList();
+
+        return Ok(results);
     }
 }
