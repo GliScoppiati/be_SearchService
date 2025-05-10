@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SearchService.Clients;
 using SearchService.Repositories;
 using System.Text;
+using SearchService.Services; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,7 +30,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ServiceOnly",
+        p => p.RequireRole("Service"));
+});
 
 // 🌍 HTTP Client -> CocktailService
 builder.Services.AddHttpClient<CocktailServiceClient>(client =>
@@ -40,7 +44,6 @@ builder.Services.AddHttpClient<CocktailServiceClient>(client =>
 
 // 📦 Repository e Storages
 builder.Services.AddSingleton<CocktailRepository>();
-builder.Services.AddScoped<HistoryRepository>();
 
 // ✅ Controller + Swagger + JWT Bearer support
 builder.Services.AddControllers();
@@ -83,14 +86,30 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddHostedService<RefreshJob>();
+
 var app = builder.Build();
 
 // 🚀 Carica cocktails/ingredienti mappa iniziale
 using (var scope = app.Services.CreateScope())
 {
-    var repo = scope.ServiceProvider.GetRequiredService<CocktailRepository>();
+    var repo   = scope.ServiceProvider.GetRequiredService<CocktailRepository>();
     var client = scope.ServiceProvider.GetRequiredService<CocktailServiceClient>();
-    await repo.ReloadAsync(client);
+    var log    = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    for (int attempt = 1; attempt <= 5; attempt++)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(60));
+        await repo.ReloadAsync(client, force: true);
+
+        log.LogInformation("Tentativo {Attempt}/5 – cache contiene {Count} cocktail.",
+                           attempt, repo.GetCocktails().Count);
+
+        if (attempt < 5)
+            await Task.Delay(TimeSpan.FromSeconds(5));
+    }
+
+    log.LogInformation("✅ Bootstrap completato (non garantisce dataset pieno).");
 }
 
 
