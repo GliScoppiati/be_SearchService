@@ -139,4 +139,31 @@ public class SearchController : ControllerBase
 
         return Ok(results);
     }
+
+    [HttpGet("random-images")]
+    public IActionResult GetRandomCocktailImages([FromQuery] int count = 10)
+    {
+        if (count > 50) count = 50;
+        if (count < 1)  count = 1;
+
+        var alcoholAllowed = User.Claims
+            .FirstOrDefault(c => c.Type == "alcoholAllowed")
+            ?.Value
+            .Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+
+        var cocktails = _cocktailRepo.GetCocktails()
+            .Where(c => !string.IsNullOrWhiteSpace(c.ImageUrl)) // solo se c'è immagine
+            .Where(c => alcoholAllowed || !c.IsAlcoholic)        // escludi se serve
+            .OrderBy(_ => Guid.NewGuid())                        // shuffle
+            .Take(count)
+            .Select(c => new CocktailDto
+            {
+                CocktailId = c.CocktailId,
+                Name       = c.Name,
+                ImageUrl   = c.ImageUrl
+            })
+            .ToList();
+
+        return Ok(cocktails);
+    }
 }
