@@ -31,7 +31,7 @@ public class CocktailServiceClient
     {
         try
         {
-            var response = await _http.GetFromJsonAsync<List<Ingredient>>("ingredients");
+            var response = await _http.GetFromJsonAsync<List<Ingredient>>("cocktail/ingredients");
             return response ?? new List<Ingredient>();
         }
         catch

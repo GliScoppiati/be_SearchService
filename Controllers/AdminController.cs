@@ -23,6 +23,11 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> ReloadData()
     {
         await _cocktailRepo.ReloadAsync(_client);
-        return Ok("✅ Reload completed.");
+
+        return Ok(new
+        {
+            message = "Reload completed",
+            reloadedAt = DateTime.UtcNow
+        });
     }
 }

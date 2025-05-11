@@ -6,6 +6,7 @@ using SearchService.Clients;
 namespace SearchService.Controllers;
 
 [ApiController]
+[Authorize(Policy = "AdminOrService")]
 [Route("cocktails/reload")]
 public class ReloadController : ControllerBase
 {
@@ -21,7 +22,19 @@ public class ReloadController : ControllerBase
     [HttpPost("now")]
     public async Task<IActionResult> ReloadNow()
     {
+        Console.WriteLine("🚨 CHIAMATA ARRIVATA AL CONTROLLER /cocktails/reload/now");
+        foreach (var c in User.Claims)
+            Console.WriteLine($"🔍 CLAIM: {c.Type} = {c.Value}");
+            
+        var authHeader = Request.Headers["Authorization"].ToString();
+        Console.WriteLine("📥 Authorization Header ricevuto: " + authHeader);
+
         await _repo.ReloadAsync(_client, force: true);
-        return Ok("✅ Reload eseguito.");
+        return Ok(new
+        {
+            message = "Reload executed successfully.",
+            forced = true,
+            reloadedAt = DateTime.UtcNow
+        });
     }
 }

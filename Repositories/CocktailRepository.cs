@@ -24,31 +24,34 @@ public class CocktailRepository
         await _gate.WaitAsync();
         try
         {
-            /* Cool‑down di 1 ora salvo override “force” */
             if (!force && DateTime.UtcNow - _lastReloadUtc < TimeSpan.FromHours(1))
                 return;
 
             _logger.LogInformation("🔄 Avvio reload dati da CocktailService…");
 
-            /* 1️⃣  Scarica i dati in strutture temporanee */
-            var cocktailsTmp     = await client.GetCocktailsAsync();
-            var ingredientsTmp   = await client.GetIngredientsAsync();
-            var ingredientMapTmp = await client.GetIngredientsMapAsync();
+            _logger.LogInformation("📡 Richiesta GET /cocktail");
+            var cocktailsTmp = await client.GetCocktailsAsync();
+            _logger.LogInformation("📦 Ricevuti {Count} cocktail", cocktailsTmp.Count);
 
-            /* 2️⃣  Evita di svuotare la cache se la sorgente è vuota */
+            _logger.LogInformation("📡 Richiesta GET /cocktail/ingredients");
+            var ingredientsTmp = await client.GetIngredientsAsync();
+            _logger.LogInformation("📦 Ricevuti {Count} ingredienti", ingredientsTmp.Count);
+
+            _logger.LogInformation("📡 Richiesta GET /cocktail/ingredients-map");
+            var ingredientMapTmp = await client.GetIngredientsMapAsync();
+            _logger.LogInformation("📦 Ricevuti {Count} mapping cocktail-ingredienti", ingredientMapTmp.Count);
+
             if (!cocktailsTmp.Any())
             {
                 _logger.LogWarning("⚠️ Reload annullato: lista cocktail vuota.");
                 return;
             }
 
-            /* 3️⃣  Sostituzione atomica delle liste */
             _cocktails     = cocktailsTmp;
             _ingredients   = ingredientsTmp;
             _ingredientMap = ingredientMapTmp;
             _lastReloadUtc = DateTime.UtcNow;
 
-            /* 4️⃣  Log riepilogativo */
             _logger.LogInformation(
                 "✅ Reload completato – {CountC} cocktail, {CountI} ingredienti, {CountM} mappe.",
                 _cocktails.Count, _ingredients.Count, _ingredientMap.Count);

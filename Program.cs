@@ -13,6 +13,10 @@ var builder = WebApplication.CreateBuilder(args);
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var keyBytes = Encoding.ASCII.GetBytes(jwtSection["Key"]!);
 
+Console.WriteLine("🔐 JWT Key: " + jwtSection["Key"]);
+Console.WriteLine("🔐 JWT Issuer: " + jwtSection["Issuer"]);
+Console.WriteLine("🔐 JWT Audience: " + jwtSection["Audience"]);
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -32,15 +36,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("ServiceOnly",
-        p => p.RequireRole("Service"));
+    options.AddPolicy("ServiceOnly", policy =>
+        policy.RequireRole("Service"));
+
+    options.AddPolicy("AdminOrService", policy =>
+        policy.RequireRole("Admin", "Service"));
 });
 
 // 🌍 HTTP Client -> CocktailService
+builder.Services.AddTransient<JwtServiceHandler>();
+builder.Services.AddTransient<ClearAuthHeaderHandler>();
+
 builder.Services.AddHttpClient<CocktailServiceClient>(client =>
 {
     client.BaseAddress = new Uri("http://cocktail-service");
-});
+})
+.AddHttpMessageHandler<ClearAuthHeaderHandler>()
+.AddHttpMessageHandler<JwtServiceHandler>();
 
 // 📦 Repository e Storages
 builder.Services.AddSingleton<CocktailRepository>();
@@ -119,6 +131,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+Console.WriteLine("🕒 UTC NOW from SearchService: " + DateTime.UtcNow);
 
 app.UseCors("AllowAll"); // 👈 IMPORTANTE: Prima di auth
 app.UseHttpsRedirection();

@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using SearchService.Repositories;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SearchService.Controllers;
 
 [ApiController]
+[Authorize(Policy = "AdminOrService")]
 [Route("status")]
 public class StatusController : ControllerBase
 {
