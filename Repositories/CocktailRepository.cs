@@ -9,9 +9,9 @@ public class CocktailRepository
     private readonly ILogger<CocktailRepository> _logger;
 
     /* Cache corrente */
-    private List<Cocktail>           _cocktails      = new();
-    private List<Ingredient>         _ingredients    = new();
-    private List<CocktailIngredient> _ingredientMap  = new();
+    private List<Cocktail> _cocktails = new();
+    private List<Ingredient> _ingredients = new();
+    private List<CocktailIngredient> _ingredientMap = new();
 
     /* Sincronizzazione e throttling */
     private static readonly SemaphoreSlim _gate = new(1, 1);
@@ -47,8 +47,8 @@ public class CocktailRepository
                 return;
             }
 
-            _cocktails     = cocktailsTmp;
-            _ingredients   = ingredientsTmp;
+            _cocktails = cocktailsTmp;
+            _ingredients = ingredientsTmp;
             _ingredientMap = ingredientMapTmp;
             _lastReloadUtc = DateTime.UtcNow;
 
@@ -68,8 +68,8 @@ public class CocktailRepository
 
     /* ---- Accessors pubblici ---- */
 
-    public List<Cocktail>           GetCocktails()     => _cocktails;
-    public List<Ingredient>         GetIngredients()   => _ingredients;
+    public List<Cocktail> GetCocktails() => _cocktails;
+    public List<Ingredient> GetIngredients() => _ingredients;
     public List<CocktailIngredient> GetIngredientMap() => _ingredientMap;
 
     public DateTime LastReloadUtc => _lastReloadUtc;

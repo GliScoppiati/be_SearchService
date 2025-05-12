@@ -17,7 +17,7 @@ var logger = builder.Logging.Services.BuildServiceProvider()
 
 // 🔐 JWT settings
 var jwtSection = builder.Configuration.GetSection("Jwt");
-var keyBytes   = Encoding.ASCII.GetBytes(jwtSection["Key"]!);
+var keyBytes = Encoding.ASCII.GetBytes(jwtSection["Key"]!);
 
 logger.LogDebug("[SearchService] 🔐 JWT Config - Key length: {KeyLength}, Issuer: {Issuer}, Audience: {Audience}",
     jwtSection["Key"]?.Length, jwtSection["Issuer"], jwtSection["Audience"]);
@@ -26,16 +26,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
         opt.RequireHttpsMetadata = false;
-        opt.SaveToken            = true;
+        opt.SaveToken = true;
         opt.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer              = jwtSection["Issuer"],
-            ValidAudience            = jwtSection["Audience"],
-            IssuerSigningKey         = new SymmetricSecurityKey(keyBytes)
+            ValidIssuer = jwtSection["Issuer"],
+            ValidAudience = jwtSection["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
         };
     });
 
@@ -69,10 +69,10 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Bearer token",
-        Name        = "Authorization",
-        In          = ParameterLocation.Header,
-        Type        = SecuritySchemeType.ApiKey,
-        Scheme      = "Bearer"
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {

@@ -22,7 +22,7 @@ namespace SearchService.Controllers
             CocktailServiceClient client,
             ILogger<ReloadController> logger)
         {
-            _repo   = repo;
+            _repo = repo;
             _client = client;
             _logger = logger;
         }
@@ -58,8 +58,8 @@ namespace SearchService.Controllers
 
                 return Ok(new
                 {
-                    message    = "Reload executed successfully.",
-                    forced     = true,
+                    message = "Reload executed successfully.",
+                    forced = true,
                     reloadedAt
                 });
             }

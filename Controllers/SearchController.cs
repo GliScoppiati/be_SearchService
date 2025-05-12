@@ -31,43 +31,43 @@ public class SearchController : ControllerBase
         switch (filterType)
         {
             case "ingredients":
-            {
-                var ingredients = _cocktailRepo.GetIngredients()
-                    .Where(i => !string.IsNullOrWhiteSpace(i.Name))
-                    .Select(i => new { name = i.Name })
-                    .Distinct();
-                return Ok(ingredients);
-            }
+                {
+                    var ingredients = _cocktailRepo.GetIngredients()
+                        .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+                        .Select(i => new { name = i.Name })
+                        .Distinct();
+                    return Ok(ingredients);
+                }
 
             case "category":
-            {
-                var categories = _cocktailRepo.GetCocktails()
-                    .Select(c => c.Category)
-                    .Where(c => !string.IsNullOrWhiteSpace(c))
-                    .Distinct()
-                    .Select(name => new { name });
-                return Ok(categories);
-            }
+                {
+                    var categories = _cocktailRepo.GetCocktails()
+                        .Select(c => c.Category)
+                        .Where(c => !string.IsNullOrWhiteSpace(c))
+                        .Distinct()
+                        .Select(name => new { name });
+                    return Ok(categories);
+                }
 
             case "glass":
-            {
-                var glasses = _cocktailRepo.GetCocktails()
-                    .Select(c => c.Glass)
-                    .Where(g => !string.IsNullOrWhiteSpace(g))
-                    .Distinct()
-                    .Select(name => new { name });
-                return Ok(glasses);
-            }
+                {
+                    var glasses = _cocktailRepo.GetCocktails()
+                        .Select(c => c.Glass)
+                        .Where(g => !string.IsNullOrWhiteSpace(g))
+                        .Distinct()
+                        .Select(name => new { name });
+                    return Ok(glasses);
+                }
 
             case "alcoholic":
-            {
-                var options = new[]
                 {
+                    var options = new[]
+                    {
                     new { name = "true" },
                     new { name = "false" }
                 };
-                return Ok(options);
-            }
+                    return Ok(options);
+                }
 
             default:
                 return BadRequest("Invalid filter type");
@@ -88,9 +88,9 @@ public class SearchController : ControllerBase
             return BadRequest("At least one filter is required.");
 
         // Preleva cache per evitare multiple enumerazioni
-        var allCocktails   = _cocktailRepo.GetCocktails();
+        var allCocktails = _cocktailRepo.GetCocktails();
         var allIngredients = _cocktailRepo.GetIngredients();
-        var allMaps        = _cocktailRepo.GetIngredientMap();
+        var allMaps = _cocktailRepo.GetIngredientMap();
 
         var results = allCocktails
             .Where(c =>
@@ -114,13 +114,13 @@ public class SearchController : ControllerBase
                                   (map, ing) => Normalize(ing.Name))
                             .Any(n => n.Contains(normalizedName, StringComparison.OrdinalIgnoreCase)),
 
-                        "category"   => Normalize(c.Category).Equals(normalizedName),
-                        "glass"      => Normalize(c.Glass).Equals(normalizedName),
-                        "alcoholic"  => c.IsAlcoholic
+                        "category" => Normalize(c.Category).Equals(normalizedName),
+                        "glass" => Normalize(c.Glass).Equals(normalizedName),
+                        "alcoholic" => c.IsAlcoholic
                                           ? normalizedName == "true"
                                           : normalizedName == "false",
-                        "cocktail"   => Normalize(c.Name).Contains(normalizedName),
-                        _             => false
+                        "cocktail" => Normalize(c.Name).Contains(normalizedName),
+                        _ => false
                     };
 
                     if (!isMatch)
@@ -132,8 +132,8 @@ public class SearchController : ControllerBase
             .Select(c => new CocktailDto
             {
                 CocktailId = c.CocktailId,
-                Name       = c.Name,
-                ImageUrl   = c.ImageUrl
+                Name = c.Name,
+                ImageUrl = c.ImageUrl
             })
             .ToList();
 
@@ -144,7 +144,7 @@ public class SearchController : ControllerBase
     public IActionResult GetRandomCocktailImages([FromQuery] int count = 10)
     {
         if (count > 50) count = 50;
-        if (count < 1)  count = 1;
+        if (count < 1) count = 1;
 
         var alcoholAllowed = User.Claims
             .FirstOrDefault(c => c.Type == "alcoholAllowed")
@@ -159,8 +159,8 @@ public class SearchController : ControllerBase
             .Select(c => new CocktailDto
             {
                 CocktailId = c.CocktailId,
-                Name       = c.Name,
-                ImageUrl   = c.ImageUrl
+                Name = c.Name,
+                ImageUrl = c.ImageUrl
             })
             .ToList();
 

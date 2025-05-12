@@ -20,7 +20,7 @@ namespace SearchService.Services
             IConfiguration cfg,
             ILogger<JwtServiceHandler> logger)
         {
-            _cfg    = cfg;
+            _cfg = cfg;
             _logger = logger;
 
             _logger.LogDebug("[SearchService] 🛠️ JwtServiceHandler instantiated.");
@@ -57,15 +57,15 @@ namespace SearchService.Services
                 Encoding.ASCII.GetBytes(_cfg["Jwt:Key"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var now     = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
             _expiresUtc = now.AddHours(12);
 
             var jwt = new JwtSecurityToken(
-                issuer:    _cfg["Jwt:Issuer"],
-                audience:  _cfg["Jwt:Audience"],
-                claims:    new[] { new Claim(ClaimTypes.Role, "Service") },
+                issuer: _cfg["Jwt:Issuer"],
+                audience: _cfg["Jwt:Audience"],
+                claims: new[] { new Claim(ClaimTypes.Role, "Service") },
                 notBefore: now,
-                expires:   _expiresUtc,
+                expires: _expiresUtc,
                 signingCredentials: creds);
 
             _cachedToken = new JwtSecurityTokenHandler().WriteToken(jwt);
