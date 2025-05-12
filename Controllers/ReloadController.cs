@@ -1,40 +1,76 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SearchService.Repositories;
 using SearchService.Clients;
+using System;
+using System.Threading.Tasks;
 
-namespace SearchService.Controllers;
-
-[ApiController]
-[Authorize(Policy = "AdminOrService")]
-[Route("cocktails/reload")]
-public class ReloadController : ControllerBase
+namespace SearchService.Controllers
 {
-    private readonly CocktailRepository _repo;
-    private readonly CocktailServiceClient _client;
-
-    public ReloadController(CocktailRepository repo, CocktailServiceClient client)
+    [ApiController]
+    [Authorize(Policy = "AdminOrService")]
+    [Route("cocktails/reload")]
+    public class ReloadController : ControllerBase
     {
-        _repo = repo; _client = client;
-    }
+        private readonly CocktailRepository _repo;
+        private readonly CocktailServiceClient _client;
+        private readonly ILogger<ReloadController> _logger;
 
-    [Authorize(Policy = "ServiceOnly")]
-    [HttpPost("now")]
-    public async Task<IActionResult> ReloadNow()
-    {
-        Console.WriteLine("🚨 CHIAMATA ARRIVATA AL CONTROLLER /cocktails/reload/now");
-        foreach (var c in User.Claims)
-            Console.WriteLine($"🔍 CLAIM: {c.Type} = {c.Value}");
-            
-        var authHeader = Request.Headers["Authorization"].ToString();
-        Console.WriteLine("📥 Authorization Header ricevuto: " + authHeader);
-
-        await _repo.ReloadAsync(_client, force: true);
-        return Ok(new
+        public ReloadController(
+            CocktailRepository repo,
+            CocktailServiceClient client,
+            ILogger<ReloadController> logger)
         {
-            message = "Reload executed successfully.",
-            forced = true,
-            reloadedAt = DateTime.UtcNow
-        });
+            _repo   = repo;
+            _client = client;
+            _logger = logger;
+        }
+
+        [Authorize(Policy = "ServiceOnly")]
+        [HttpPost("now")]
+        public async Task<IActionResult> ReloadNow()
+        {
+            _logger.LogInformation("[SearchService] 🚨 Chiamata ricevuta su /cocktails/reload/now");
+
+            foreach (var c in User.Claims)
+            {
+                _logger.LogDebug(
+                    "[SearchService] 🔍 CLAIM: {ClaimType} = {ClaimValue}",
+                    c.Type,
+                    c.Value
+                );
+            }
+
+            if (Request.Headers.ContainsKey("Authorization"))
+            {
+                _logger.LogInformation("[SearchService] 📥 Authorization header presente");
+            }
+
+            try
+            {
+                await _repo.ReloadAsync(_client, force: true);
+                var reloadedAt = DateTime.UtcNow;
+                _logger.LogInformation(
+                    "[SearchService] ✅ Reload eseguito con successo a {ReloadedAt}",
+                    reloadedAt
+                );
+
+                return Ok(new
+                {
+                    message    = "Reload executed successfully.",
+                    forced     = true,
+                    reloadedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "[SearchService] ❌ Errore durante il reload"
+                );
+                throw;
+            }
+        }
     }
 }

@@ -1,36 +1,41 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SearchService.Clients;
 using SearchService.Repositories;
+using SearchService.Services;
+using System;
 using System.Text;
-using SearchService.Services; 
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Recupera il logger di Program
+var logger = builder.Logging.Services.BuildServiceProvider()
+                  .GetRequiredService<ILogger<Program>>();
+
 // 🔐 JWT settings
 var jwtSection = builder.Configuration.GetSection("Jwt");
-var keyBytes = Encoding.ASCII.GetBytes(jwtSection["Key"]!);
+var keyBytes   = Encoding.ASCII.GetBytes(jwtSection["Key"]!);
 
-Console.WriteLine("🔐 JWT Key: " + jwtSection["Key"]);
-Console.WriteLine("🔐 JWT Issuer: " + jwtSection["Issuer"]);
-Console.WriteLine("🔐 JWT Audience: " + jwtSection["Audience"]);
+logger.LogDebug("[SearchService] 🔐 JWT Config - Key length: {KeyLength}, Issuer: {Issuer}, Audience: {Audience}",
+    jwtSection["Key"]?.Length, jwtSection["Issuer"], jwtSection["Audience"]);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
         opt.RequireHttpsMetadata = false;
-        opt.SaveToken = true;
+        opt.SaveToken            = true;
         opt.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSection["Issuer"],
-            ValidAudience = jwtSection["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
+            ValidIssuer              = jwtSection["Issuer"],
+            ValidAudience            = jwtSection["Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(keyBytes)
         };
     });
 
@@ -38,7 +43,6 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("ServiceOnly", policy =>
         policy.RequireRole("Service"));
-
     options.AddPolicy("AdminOrService", policy =>
         policy.RequireRole("Admin", "Service"));
 });
@@ -46,7 +50,6 @@ builder.Services.AddAuthorization(options =>
 // 🌍 HTTP Client -> CocktailService
 builder.Services.AddTransient<JwtServiceHandler>();
 builder.Services.AddTransient<ClearAuthHeaderHandler>();
-
 builder.Services.AddHttpClient<CocktailServiceClient>(client =>
 {
     client.BaseAddress = new Uri("http://cocktail-service");
@@ -66,10 +69,10 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Bearer token",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Name        = "Authorization",
+        In          = ParameterLocation.Header,
+        Type        = SecuritySchemeType.ApiKey,
+        Scheme      = "Bearer"
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -79,7 +82,7 @@ builder.Services.AddSwaggerGen(c =>
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    Id   = "Bearer"
                 }
             },
             Array.Empty<string>()
@@ -102,28 +105,8 @@ builder.Services.AddHostedService<RefreshJob>();
 
 var app = builder.Build();
 
-// 🚀 Carica cocktails/ingredienti mappa iniziale
-// using (var scope = app.Services.CreateScope())
-// {
-//     var repo   = scope.ServiceProvider.GetRequiredService<CocktailRepository>();
-//     var client = scope.ServiceProvider.GetRequiredService<CocktailServiceClient>();
-//     var log    = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-//     for (int attempt = 1; attempt <= 5; attempt++)
-//     {
-//         await Task.Delay(TimeSpan.FromSeconds(60));
-//         await repo.ReloadAsync(client, force: true);
-
-//         log.LogInformation("Tentativo {Attempt}/5 – cache contiene {Count} cocktail.",
-//                            attempt, repo.GetCocktails().Count);
-
-//         if (attempt < 5)
-//             await Task.Delay(TimeSpan.FromSeconds(5));
-//     }
-
-//     log.LogInformation("✅ Bootstrap completato (non garantisce dataset pieno).");
-// }
-
+// 🟢 Bootstrap log (UTC now)
+logger.LogInformation("[SearchService] 🕒 UTC NOW: {UtcNow}", DateTime.UtcNow);
 
 // ✅ HTTP Pipeline
 if (app.Environment.IsDevelopment())
@@ -132,13 +115,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-Console.WriteLine("🕒 UTC NOW from SearchService: " + DateTime.UtcNow);
-
-app.UseCors("AllowAll"); // 👈 IMPORTANTE: Prima di auth
+app.UseCors("AllowAll"); // 👈 IMPORTANTE: prima di Auth
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-Console.WriteLine("✅ SearchService avviato su: " + builder.Configuration["ASPNETCORE_URLS"]);
+// 🟢 Avvio del service
+var urls = builder.Configuration["ASPNETCORE_URLS"] ?? "non configurato";
+logger.LogInformation("[SearchService] ✅ Service avviato su: {Urls}", urls);
+
 app.Run();

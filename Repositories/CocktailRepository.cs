@@ -27,23 +27,23 @@ public class CocktailRepository
             if (!force && DateTime.UtcNow - _lastReloadUtc < TimeSpan.FromHours(1))
                 return;
 
-            _logger.LogInformation("🔄 Avvio reload dati da CocktailService…");
+            _logger.LogInformation("[SearchService] 🔄 Avvio reload dati da CocktailService…");
 
-            _logger.LogInformation("📡 Richiesta GET /cocktail");
+            _logger.LogInformation("[SearchService] 📡 Richiesta GET /cocktail");
             var cocktailsTmp = await client.GetCocktailsAsync();
-            _logger.LogInformation("📦 Ricevuti {Count} cocktail", cocktailsTmp.Count);
+            _logger.LogInformation("[SearchService] 📦 Ricevuti {Count} cocktail", cocktailsTmp.Count);
 
-            _logger.LogInformation("📡 Richiesta GET /cocktail/ingredients");
+            _logger.LogInformation("[SearchService] 📡 Richiesta GET /cocktail/ingredients");
             var ingredientsTmp = await client.GetIngredientsAsync();
-            _logger.LogInformation("📦 Ricevuti {Count} ingredienti", ingredientsTmp.Count);
+            _logger.LogInformation("[SearchService] 📦 Ricevuti {Count} ingredienti", ingredientsTmp.Count);
 
-            _logger.LogInformation("📡 Richiesta GET /cocktail/ingredients-map");
+            _logger.LogInformation("[SearchService] 📡 Richiesta GET /cocktail/ingredients-map");
             var ingredientMapTmp = await client.GetIngredientsMapAsync();
-            _logger.LogInformation("📦 Ricevuti {Count} mapping cocktail-ingredienti", ingredientMapTmp.Count);
+            _logger.LogInformation("[SearchService] 📦 Ricevuti {Count} mapping cocktail-ingredienti", ingredientMapTmp.Count);
 
             if (!cocktailsTmp.Any())
             {
-                _logger.LogWarning("⚠️ Reload annullato: lista cocktail vuota.");
+                _logger.LogWarning("[SearchService] ⚠️ Reload annullato: lista cocktail vuota.");
                 return;
             }
 
@@ -53,12 +53,12 @@ public class CocktailRepository
             _lastReloadUtc = DateTime.UtcNow;
 
             _logger.LogInformation(
-                "✅ Reload completato – {CountC} cocktail, {CountI} ingredienti, {CountM} mappe.",
+                "[SearchService] ✅ Reload completato – {CountC} cocktail, {CountI} ingredienti, {CountM} mappe.",
                 _cocktails.Count, _ingredients.Count, _ingredientMap.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Errore durante il reload; la cache precedente rimane valida.");
+            _logger.LogError(ex, "[SearchService] ❌ Errore durante il reload; la cache precedente rimane valida.");
         }
         finally
         {
